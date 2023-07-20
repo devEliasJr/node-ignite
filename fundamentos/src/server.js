@@ -1,7 +1,7 @@
 import http from "node:http";
 import { json } from "./middlewares/json.js";
 import { routes } from "./routes.js";
-
+import { extarctQueryParams } from "./utils/extract-query-params.js";
 
 // Query Parameters: URL Stateful => Filtros / paginação, não obrigatórios
 // http://localhost:3333/users?userID=1&name=John
@@ -13,17 +13,23 @@ import { routes } from "./routes.js";
 // Resquest Body: Enviar de informações de um formulário (protocolo HTTPs)
 // Envio a parte pelo body da request a url se mantem
 
-
 const server = http.createServer(async (req, res) => {
   const { method, url } = req;
 
   await json(req, res);
 
   const route = routes.find((route) => {
-    return route.method === method && route.path === url;
+    return route.method === method && route.path.test(url);
   });
 
   if (route) {
+    const routeParams = req.url.match(route.path);
+
+    const { query, ...params } = routeParams.groups;
+
+    req.params = params;
+    req.query = query ? extarctQueryParams(routeParams.groups.query) : {};
+
     return route.handler(req, res);
   }
 
